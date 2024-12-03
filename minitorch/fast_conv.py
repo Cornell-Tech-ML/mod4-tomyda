@@ -34,64 +34,80 @@ broadcast_index = njit(broadcast_index)
 
 
 def _tensor_conv1d(
-    out: Storage,
+    out_storage: Storage,
     out_shape: Shape,
     out_strides: Strides,
     out_size: int,
-    input: Storage,
-    input_shape: Shape,
-    input_strides: Strides,
-    weight: Storage,
-    weight_shape: Shape,
-    weight_strides: Strides,
+    in_storage: Storage,
+    in_shape: Shape,
+    in_strides: Strides,
+    wt_storage: Storage,
+    wt_shape: Shape,
+    wt_strides: Strides,
     reverse: bool,
 ) -> None:
-    """1D Convolution implementation.
-
-    Given input tensor of
-
-       `batch, in_channels, width`
-
-    and weight tensor
-
-       `out_channels, in_channels, k_width`
-
-    Computes padded output of
-
-       `batch, out_channels, width`
-
-    `reverse` decides if weight is anchored left (False) or right.
-    (See diagrams)
+    """Performs a 1D convolution operation.
 
     Args:
-    ----
-        out (Storage): storage for `out` tensor.
-        out_shape (Shape): shape for `out` tensor.
-        out_strides (Strides): strides for `out` tensor.
-        out_size (int): size of the `out` tensor.
-        input (Storage): storage for `input` tensor.
-        input_shape (Shape): shape for `input` tensor.
-        input_strides (Strides): strides for `input` tensor.
-        weight (Storage): storage for `input` tensor.
-        weight_shape (Shape): shape for `input` tensor.
-        weight_strides (Strides): strides for `input` tensor.
-        reverse (bool): anchor weight at left or right
+        out_storage (Storage): Storage for the output tensor.
+        out_shape (Shape): Shape of the output tensor (batch_size, num_out_channels, output_width).
+        out_strides (Strides): Strides of the output tensor.
+        out_size (int): Total number of elements in the output tensor.
+        in_storage (Storage): Storage for the input tensor.
+        in_shape (Shape): Shape of the input tensor (batch_size, num_in_channels, input_width).
+        in_strides (Strides): Strides of the input tensor.
+        wt_storage (Storage): Storage for the weight tensor.
+        wt_shape (Shape): Shape of the weight tensor (num_out_channels, num_in_channels, kernel_width).
+        wt_strides (Strides): Strides of the weight tensor.
+        reverse (bool): If True, performs a reverse convolution.
+
+    Returns:
+        None: The result is stored in out_storage.
 
     """
-    batch_, out_channels, out_width = out_shape
-    batch, in_channels, width = input_shape
-    out_channels_, in_channels_, kw = weight_shape
+    batch_size_out, num_out_channels, output_width = out_shape
+    batch_size_in, num_in_channels, input_width = in_shape
+    num_out_channels_wt, num_in_channels_wt, kernel_width = wt_shape
 
+    # Ensure that the dimensions are compatible
     assert (
-        batch == batch_
-        and in_channels == in_channels_
-        and out_channels == out_channels_
+        batch_size_in == batch_size_out
+        and num_in_channels == num_in_channels_wt
+        and num_out_channels == num_out_channels_wt
     )
-    s1 = input_strides
-    s2 = weight_strides
 
-    # TODO: Implement for Task 4.1.
-    raise NotImplementedError("Need to implement for Task 4.1")
+    in_s = in_strides
+    wt_s = wt_strides
+
+    for b_idx in prange(batch_size_out):
+        for o_ch in prange(num_out_channels):
+            for o_w in prange(output_width):
+                conv_sum = 0.0
+                for i_ch in prange(num_in_channels):
+                    for k_w in prange(kernel_width):
+                        # Calculate weight position
+                        wt_idx = o_ch * wt_s[0] + i_ch * wt_s[1] + k_w * wt_s[2]
+
+                        # Determine input width index based on 'reverse' flag
+                        if reverse:
+                            in_w = o_w - k_w
+                        else:
+                            in_w = o_w + k_w
+
+                        # Check if the input width index is within bounds
+                        if 0 <= in_w < input_width:
+                            # Calculate input position
+                            in_idx = b_idx * in_s[0] + i_ch * in_s[1] + in_w * in_s[2]
+                            # Accumulate the convolution sum
+                            conv_sum += in_storage[in_idx] * wt_storage[wt_idx]
+
+                # Calculate output position and store the result
+                out_idx = (
+                    b_idx * out_strides[0]
+                    + o_ch * out_strides[1]
+                    + o_w * out_strides[2]
+                )
+                out_storage[out_idx] = conv_sum
 
 
 tensor_conv1d = njit(_tensor_conv1d, parallel=True)
