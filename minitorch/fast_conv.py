@@ -174,69 +174,105 @@ conv1d = Conv1dFun.apply
 
 
 def _tensor_conv2d(
-    out: Storage,
-    out_shape: Shape,
-    out_strides: Strides,
-    out_size: int,
-    input: Storage,
+    output_storage: Storage,
+    output_shape: Shape,
+    output_strides: Strides,
+    output_size: int,
+    input_storage: Storage,
     input_shape: Shape,
     input_strides: Strides,
-    weight: Storage,
-    weight_shape: Shape,
-    weight_strides: Strides,
+    kernel_storage: Storage,
+    kernel_shape: Shape,
+    kernel_strides: Strides,
     reverse: bool,
 ) -> None:
     """2D Convolution implementation.
 
-    Given input tensor of
+    Given an input tensor of shape:
+        (batch_size, in_channels, input_height, input_width)
 
-       `batch, in_channels, height, width`
+    and a kernel tensor of shape:
+        (out_channels, in_channels, kernel_height, kernel_width)
 
-    and weight tensor
+    Computes an output tensor of shape:
+        (batch_size, out_channels, output_height, output_width)
 
-       `out_channels, in_channels, k_height, k_width`
-
-    Computes padded output of
-
-       `batch, out_channels, height, width`
-
-    `Reverse` decides if weight is anchored top-left (False) or bottom-right.
-    (See diagrams)
-
+    The 'reverse' parameter determines whether the convolution is reversed.
 
     Args:
-    ----
-        out (Storage): storage for `out` tensor.
-        out_shape (Shape): shape for `out` tensor.
-        out_strides (Strides): strides for `out` tensor.
-        out_size (int): size of the `out` tensor.
-        input (Storage): storage for `input` tensor.
-        input_shape (Shape): shape for `input` tensor.
-        input_strides (Strides): strides for `input` tensor.
-        weight (Storage): storage for `input` tensor.
-        weight_shape (Shape): shape for `input` tensor.
-        weight_strides (Strides): strides for `input` tensor.
-        reverse (bool): anchor weight at top-left or bottom-right
+        output_storage (Storage): Storage for the output tensor.
+        output_shape (Shape): Shape of the output tensor.
+        output_strides (Strides): Strides of the output tensor.
+        output_size (int): Total number of elements in the output tensor.
+        input_storage (Storage): Storage for the input tensor.
+        input_shape (Shape): Shape of the input tensor.
+        input_strides (Strides): Strides of the input tensor.
+        kernel_storage (Storage): Storage for the kernel tensor.
+        kernel_shape (Shape): Shape of the kernel tensor.
+        kernel_strides (Strides): Strides of the kernel tensor.
+        reverse (bool): If True, performs a reversed convolution.
 
     """
-    batch_, out_channels, _, _ = out_shape
-    batch, in_channels, height, width = input_shape
-    out_channels_, in_channels_, kh, kw = weight_shape
+    batch_size_out, num_out_channels, out_height, out_width = output_shape
+    batch_size_in, num_in_channels, in_height, in_width = input_shape
+    num_out_channels_k, num_in_channels_k, k_height, k_width = kernel_shape
 
+    # Ensure that the dimensions are compatible
     assert (
-        batch == batch_
-        and in_channels == in_channels_
-        and out_channels == out_channels_
+        batch_size_out == batch_size_in
+        and num_in_channels == num_in_channels_k
+        and num_out_channels == num_out_channels_k
     )
 
-    s1 = input_strides
-    s2 = weight_strides
-    # inners
-    s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
-    s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
+    # Aliases for strides
+    in_s = input_strides
+    k_s = kernel_strides
 
-    # TODO: Implement for Task 4.2.
-    raise NotImplementedError("Need to implement for Task 4.2")
+    # Loop over each element in the output tensor
+    for out_idx in prange(output_size):
+        # Convert the flat output index to multi-dimensional indices
+        out_multi_idx = [0, 0, 0, 0]
+        to_index(out_idx, output_shape, out_multi_idx)  # type: ignore
+        b_idx, o_ch_idx, o_h_idx, o_w_idx = out_multi_idx
+
+        # Initialize the convolution sum accumulator
+        conv_sum = 0.0
+
+        # Loop over each input channel and kernel position
+        for i_ch_idx in range(num_in_channels):
+            for k_h_idx in range(k_height):
+                for k_w_idx in range(k_width):
+                    # Compute the corresponding input positions
+                    if reverse:
+                        in_h_idx = o_h_idx - k_h_idx
+                        in_w_idx = o_w_idx - k_w_idx
+                    else:
+                        in_h_idx = o_h_idx + k_h_idx
+                        in_w_idx = o_w_idx + k_w_idx
+
+                    # Check if the input indices are within valid bounds
+                    if 0 <= in_h_idx < in_height and 0 <= in_w_idx < in_width:
+                        # Compute flat indices for input and kernel
+                        in_multi_idx = np.array(
+                            [b_idx, i_ch_idx, in_h_idx, in_w_idx], dtype=np.int32
+                        )
+                        in_flat_idx = index_to_position(in_multi_idx, in_s)
+
+                        k_multi_idx = np.array(
+                            [o_ch_idx, i_ch_idx, k_h_idx, k_w_idx], dtype=np.int32
+                        )
+                        k_flat_idx = index_to_position(k_multi_idx, k_s)
+
+                        # Accumulate the convolution result
+                        conv_sum += (
+                            input_storage[in_flat_idx] * kernel_storage[k_flat_idx]
+                        )
+        # Compute the flat index for the output position
+        out_multi_idx_np = np.array(out_multi_idx, dtype=np.int32)
+        out_flat_idx = index_to_position(out_multi_idx_np, output_strides)
+
+        # Store the accumulated result in the output storage
+        output_storage[out_flat_idx] = conv_sum
 
 
 tensor_conv2d = njit(_tensor_conv2d, parallel=True, fastmath=True)
