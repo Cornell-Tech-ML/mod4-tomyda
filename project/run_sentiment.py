@@ -2,12 +2,7 @@ import random
 import os
 import embeddings
 
-from pathlib import Path
-import sys
-
 import streamlit as st
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 import minitorch
 from datasets import load_dataset
@@ -54,7 +49,7 @@ class CNNSentimentKim(minitorch.Module):
         feature_map_size=100 output channels and [3, 4, 5]-sized kernels
         followed by a non-linear activation function (the paper uses tanh, we apply a ReLu)
     2. Apply max-over-time across each feature map
-    3. Apply a Linear to size C (number of classes) followed by a ReLU and Dropout with rate 25%
+    3. Apply a Linear to size C (number of classes) and Dropout with rate 25%
     4. Apply a sigmoid over the class dimension.
     """
 
