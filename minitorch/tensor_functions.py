@@ -235,10 +235,6 @@ class Permute(Function):
     @staticmethod
     def forward(contx: Context, a: Tensor, order: Tensor) -> Tensor:
         """Permute the dimensions of a tensor."""
-        print(f"Built-in int: {int}")
-        print(f"a._tensor.permute is callable: {callable(a._tensor.permute)}")
-        print(f"Order tensor: {order}")
-
         contx.save_for_backward(order)
         return a._new(a._tensor.permute(*[int(order[i]) for i in range(order.size)]))
 

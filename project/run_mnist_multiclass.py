@@ -28,6 +28,8 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
+        print(f"x backend: {x.f.__class__.__name__}")
+        print(f"weights backend: {self.weights.value.f.__class__.__name__}")
         batch, in_size = x.shape
         return (
             x.view(batch, in_size) @ self.weights.value.view(in_size, self.out_size)
@@ -95,7 +97,15 @@ def make_mnist(start, stop):
 
 
 def default_log_fn(epoch, total_loss, correct, total, losses, model):
-    print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
+    log_message = f"Epoch: {epoch} | Loss: {total_loss:.4f} | Validation Accuracy: {correct} of {total}"
+
+    print(log_message)
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+
+    file = os.path.join(log_dir, "mnist_training.log")
+    with open(file, "a") as f:
+        f.write(log_message + "\n")
 
 
 class ImageTrain:
