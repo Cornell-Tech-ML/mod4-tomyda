@@ -28,6 +28,8 @@ class Linear(minitorch.Module):
         self.out_size = out_size
 
     def forward(self, x):
+        print(f"x backend: {x.f.__class__.__name__}")
+        print(f"weights backend: {self.weights.value.f.__class__.__name__}")
         batch, in_size = x.shape
         return (
             x.view(batch, in_size) @ self.weights.value.view(in_size, self.out_size)
@@ -41,8 +43,7 @@ class Conv2d(minitorch.Module):
         self.bias = RParam(out_channels, 1, 1)
 
     def forward(self, input):
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.Conv2dFun.apply(input, self.weights.value) + self.bias.value
 
 
 class Network(minitorch.Module):
@@ -67,12 +68,20 @@ class Network(minitorch.Module):
         self.mid = None
         self.out = None
 
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.conv1 = Conv2d(1, 4, 3, 3)
+        self.conv2 = Conv2d(4, 8, 3, 3)
+        self.linear1 = Linear(392, 64)
+        self.linear2 = Linear(64, C)
 
     def forward(self, x):
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.mid = self.conv1(x).relu()
+        self.out = self.conv2(self.mid).relu()
+        po = minitorch.nn.maxpool2d(self.out, (4, 4))
+        bs = po.shape[0]
+        fo = po.view(bs, 392)
+        ho = self.linear1(fo).relu()
+        do = minitorch.dropout(ho, 0.25)
+        return minitorch.logsoftmax(self.linear2(do), dim=1)
 
 
 def make_mnist(start, stop):
@@ -88,7 +97,15 @@ def make_mnist(start, stop):
 
 
 def default_log_fn(epoch, total_loss, correct, total, losses, model):
-    print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
+    log_message = f"Epoch: {epoch} | Loss: {total_loss:.4f} | Validation Accuracy: {correct} of {total}"
+
+    print(log_message)
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+
+    file = os.path.join(log_dir, "mnist_training.log")
+    with open(file, "a") as f:
+        f.write(log_message + "\n")
 
 
 class ImageTrain:
