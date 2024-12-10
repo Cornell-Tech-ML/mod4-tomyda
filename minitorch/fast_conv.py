@@ -7,8 +7,6 @@ from numba import njit as _njit
 from .autodiff import Context
 from .tensor import Tensor
 from .tensor_data import (
-    MAX_DIMS,
-    Index,
     Shape,
     Strides,
     Storage,
@@ -22,6 +20,18 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """JIT compiles the given function using Numba's njit with inlining.
+
+    Args:
+    ----
+        fn (Fn): The function to compile.
+        **kwargs (Any): Additional keyword arguments for Numba's njit.
+
+    Returns:
+    -------
+        Fn: The compiled function.
+
+    """
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -49,6 +59,7 @@ def _tensor_conv1d(
     """Performs a 1D convolution operation.
 
     Args:
+    ----
         out_storage (Storage): Storage for the output tensor.
         out_shape (Shape): Shape of the output tensor (batch_size, num_out_channels, output_width).
         out_strides (Strides): Strides of the output tensor.
@@ -62,6 +73,7 @@ def _tensor_conv1d(
         reverse (bool): If True, performs a reverse convolution.
 
     Returns:
+    -------
         None: The result is stored in out_storage.
 
     """
@@ -143,6 +155,18 @@ class Conv1dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Compute the backward pass for the convolution operation.
+
+        Args:
+        ----
+            ctx (Context): Context object containing saved tensors from the forward pass.
+            grad_output (Tensor): Gradient of the loss with respect to the output tensor.
+
+        Returns:
+        -------
+            Tuple[Tensor, Tensor]: Gradients with respect to the input and weight tensors.
+
+        """
         input, weight = ctx.saved_values
         batch, in_channels, w = input.shape
         out_channels, in_channels, kw = weight.shape
@@ -200,6 +224,7 @@ def _tensor_conv2d(
     The 'reverse' parameter determines whether the convolution is reversed.
 
     Args:
+    ----
         output_storage (Storage): Storage for the output tensor.
         output_shape (Shape): Shape of the output tensor.
         output_strides (Strides): Strides of the output tensor.
@@ -306,6 +331,18 @@ class Conv2dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Compute the backward pass for the convolution operation.
+
+        Args:
+        ----
+            ctx (Context): Context object containing saved tensors from the forward pass.
+            grad_output (Tensor): Gradient of the loss with respect to the output tensor.
+
+        Returns:
+        -------
+            Tuple[Tensor, Tensor]: Gradients with respect to the input and weight tensors.
+
+        """
         input, weight = ctx.saved_values
         batch, in_channels, h, w = input.shape
         out_channels, in_channels, kh, kw = weight.shape

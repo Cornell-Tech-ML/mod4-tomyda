@@ -4,7 +4,7 @@ from . import operators
 from .autodiff import Context
 from .fast_ops import FastOps
 from .tensor import Tensor
-from .tensor_functions import Function, rand, tensor
+from .tensor_functions import Function, rand
 
 
 # List of functions in this file:
@@ -22,10 +22,12 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     """Reshape an image tensor for 2D pooling using unfold for better efficiency.
 
     Args:
+    ----
         input: Tensor of shape (batch, channel, height, width)
         kernel: Tuple (kh, kw) representing the kernel size for pooling
 
     Returns:
+    -------
         A tuple containing:
             - output: Tensor of shape (batch, channel, new_height, new_width, kh * kw)
             - new_height: int
@@ -57,10 +59,12 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """Average pooling 2D using unfold for better efficiency.
 
     Args:
+    ----
         input: Tensor of shape (batch, channel, height, width)
         kernel: Tuple (kh, kw) representing the kernel size for pooling
 
     Returns:
+    -------
         Pooled tensor of shape (batch, channel, new_height, new_width)
 
     """
@@ -76,10 +80,12 @@ def argmax(input: Tensor, dim: int) -> Tensor:
     """Compute the argmax as a one-hot encoded tensor along a specified dimension.
 
     Args:
+    ----
         input: Tensor of any shape.
         dim: Integer specifying the dimension to apply argmax.
 
     Returns:
+    -------
         Tensor: A one-hot encoded tensor with the same shape as the input,
                 where positions of the maximum values along the specified
                 dimension are set to 1, and all other positions are 0.
@@ -114,10 +120,12 @@ def softmax(input: Tensor, dim: int) -> Tensor:
     $z_i = \frac{e^{x_i}}{\sum_i e^{x_i}}$
 
     Args:
+    ----
         input : input tensor
         dim : dimension to apply softmax
 
     Returns:
+    -------
         softmax tensor
 
     """
@@ -132,10 +140,12 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
     $z_i = x_i - \log \sum_j e^{x_j}$
 
     Args:
+    ----
         input : Tensor of any shape
         dim : Dimension to apply log-softmax
 
     Returns:
+    -------
         Tensor: Log of softmax tensor with the same shape as the input
 
     """
@@ -149,10 +159,12 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """maxpool2d:
 
     Args:
+    ----
         input: batch x channel x height x width
         kernel: height x width of pooling
 
     Returns:
+    -------
         Tensor : pooled tensor
 
     """
@@ -167,11 +179,13 @@ def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     """Apply dropout to the input tensor based on random noise.
 
     Args:
+    ----
         input : Tensor of any shape
         rate : Probability [0, 1) of dropping out each position
         ignore : If True, skip dropout and return the input tensor unchanged
 
     Returns:
+    -------
         Tensor with random positions dropped out
 
     """
